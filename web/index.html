@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parakh · Verify before you trust</title>
+<style>
+  :root { --ink:#0f2a1e; --cream:#f7f5ef; --green:#1e7a4c; --red:#b3372e; --amber:#b07d1e; }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:-apple-system,'Segoe UI',sans-serif; background:var(--ink); color:var(--cream); min-height:100vh; }
+  .wrap { max-width:640px; margin:0 auto; padding:48px 20px; }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:36px; }
+  .tick { width:34px; height:34px; background:var(--cream); color:var(--ink); border-radius:8px; display:grid; place-items:center; font-weight:800; font-size:20px; }
+  .brand b { font-family:Georgia,serif; font-size:22px; letter-spacing:.02em; }
+  .brand span { opacity:.6; font-size:14px; }
+  h1 { font-family:Georgia,serif; font-size:34px; line-height:1.2; margin-bottom:8px; }
+  .sub { opacity:.7; margin-bottom:28px; font-size:15px; }
+  textarea { width:100%; min-height:110px; border-radius:12px; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.06); color:var(--cream); padding:14px; font-size:15px; resize:vertical; }
+  textarea:focus { outline:2px solid rgba(255,255,255,.35); }
+  .row { display:flex; gap:10px; margin-top:12px; align-items:center; flex-wrap:wrap; }
+  button.go { background:var(--cream); color:var(--ink); border:0; border-radius:10px; padding:12px 26px; font-size:15px; font-weight:700; cursor:pointer; }
+  button.go:disabled { opacity:.5; }
+  label.up { border:1px dashed rgba(255,255,255,.35); border-radius:10px; padding:11px 16px; font-size:14px; cursor:pointer; opacity:.85; }
+  input[type=file] { display:none; }
+  #fname { font-size:13px; opacity:.6; }
+  .card { margin-top:28px; border-radius:14px; padding:22px; background:#fff; color:#1b1b1b; display:none; }
+  .card .head { display:flex; align-items:center; gap:10px; font-weight:800; font-size:18px; margin-bottom:12px; }
+  .dot { width:14px; height:14px; border-radius:50%; }
+  .card.red .dot{background:var(--red)} .card.red .head{color:var(--red)}
+  .card.green .dot{background:var(--green)} .card.green .head{color:var(--green)}
+  .card.amber .dot{background:var(--amber)} .card.amber .head{color:var(--amber)}
+  .card li { margin:6px 0 6px 18px; font-size:15px; line-height:1.45; }
+  .cite { margin-top:14px; font-style:italic; font-size:13px; color:#666; border-top:1px solid #eee; padding-top:10px; }
+  .layer { margin-top:6px; font-size:12px; color:#999; }
+  .foot { margin-top:40px; font-size:12.5px; opacity:.5; line-height:1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><div class="tick">✓</div><b>Parakh</b><span>परख · SEBI TechSprint prototype</span></div>
+  <h1>Scam checkers guess.<br>Parakh knows.</h1>
+  <p class="sub">Paste a message, phone number, UPI ID, link or registration number - or upload a screenshot or video. Checked against SEBI's registry, SEBI's rules, and the confirmed-fake registry.</p>
+
+  <textarea id="text" placeholder='e.g. "Join VIP group. SEBI registered tips. 3% weekly guaranteed." - or a number like 98765 43210'></textarea>
+  <div class="row">
+    <button class="go" id="go">Check&nbsp;it</button>
+    <label class="up">Upload screenshot / video<input type="file" id="file" accept="image/*,video/*"></label>
+    <span id="fname"></span>
+  </div>
+
+  <div class="card" id="card">
+    <div class="head"><span class="dot"></span><span id="title"></span></div>
+    <ul id="reasons"></ul>
+    <div class="cite" id="cite"></div>
+    <div class="layer" id="layer"></div>
+  </div>
+
+  <p class="foot">Registration data is seeded from public SEBI lists plus clearly-marked synthetic rows until SEBI exposes a registry API. Ambiguous cases return amber and route to review - never a silent guess. No message content is stored; hashes only.</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+$('file').onchange = () => $('fname').textContent = $('file').files[0]?.name || '';
+$('go').onclick = async () => {
+  const fd = new FormData();
+  const f = $('file').files[0];
+  if (f) fd.append('file', f); else if ($('text').value.trim()) fd.append('text', $('text').value.trim());
+  else return;
+  $('go').disabled = true; $('go').textContent = 'Checking…';
+  try {
+    const r = await fetch('/api/check', {method:'POST', body:fd});
+    const v = await r.json();
+    const card = $('card');
+    card.className = 'card ' + v.color; card.style.display = 'block';
+    $('title').textContent = v.title;
+    $('reasons').innerHTML = v.reasons.map(x=>`<li>${x}</li>`).join('') +
+      (v.signals||[]).map(x=>`<li>⚠️ Signal: ${x}</li>`).join('');
+    $('cite').textContent = v.citation || '';
+    $('cite').style.display = v.citation ? 'block' : 'none';
+    $('layer').textContent = v.layer ? 'Layer: ' + v.layer : 'Checked: registry · rules · memory · models';
+    if (v.pending_name) deepCheck(v.pending_name, v.pending_handles || []);
+  } finally { $('go').disabled = false; $('go').textContent = 'Check it'; }
+};
+async function deepCheck(name, handles){
+  const li = document.createElement('li');
+  li.innerHTML = `🔍 Searching SEBI · NSE · BSE for <b>${name}</b>…`;
+  $('reasons').appendChild(li);
+  try {
+    const q = new URLSearchParams({name, handles:(handles||[]).join(',')});
+    const r = await (await fetch('/api/deepcheck?'+q)).json();
+    li.innerHTML = `<b>${r.title}</b> - ${r.text.replace(/\n+/g,' ')}`;
+    if (r.color === 'red') { const c=$('card'); c.className='card red'; }
+  } catch { li.textContent = 'Web check unavailable.'; }
+}
+</script>
+</body>
+</html>

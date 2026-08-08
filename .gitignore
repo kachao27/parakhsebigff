@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+data/parakh.db
+data/media/
+.DS_Store
+.gstack/

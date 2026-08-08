@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parakh · Market Surveillance Console</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --page:#0c120e; --surface:#16211b; --surface-2:#1b2820;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c352e; --baseline:#3a453d; --hairline:rgba(255,255,255,.10);
+    --cream:#f7f5ef; --gold:#c9a227;
+    --blue:#3987e5; --blue-dim:#1c5cab;
+    --critical:#d03b3b; --warning:#fab219; --good:#0ca30c;
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:var(--page); color:var(--ink); font-size:14px; }
+  .tricolor { height:4px; background:linear-gradient(90deg,#f6982e 0 33.3%,#fcfcfb 33.3% 66.6%,#1e7a4c 66.6% 100%); }
+  header { display:flex; align-items:center; gap:14px; padding:14px 28px; border-bottom:1px solid var(--hairline); background:var(--surface); }
+  .emblem { width:38px; height:38px; border-radius:8px; background:var(--cream); color:#0f2a1e; display:grid; place-items:center; font-weight:800; font-size:22px; }
+  header .t1 { font-family:Georgia,serif; font-size:19px; letter-spacing:.02em; }
+  header .t1 span { color:var(--gold); }
+  header .t2 { font-size:12px; color:var(--muted); margin-top:2px; }
+  .live { margin-left:auto; display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-2); }
+  .live .dot { width:8px; height:8px; border-radius:50%; background:var(--good); animation:pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity:.35 } }
+  .clock { font-variant-numeric:tabular-nums; color:var(--muted); }
+  .wrap { max-width:1240px; margin:0 auto; padding:22px 24px 48px; }
+
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
+  .tile { background:var(--surface); border:1px solid var(--hairline); border-radius:12px; padding:16px 18px; }
+  .tile .lbl { font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .tile .val { font-size:30px; font-weight:600; line-height:1.1; }
+  .tile .sub { font-size:11.5px; color:var(--ink-2); margin-top:5px; display:flex; align-items:center; gap:6px; }
+  .pip { width:9px; height:9px; border-radius:50%; display:inline-block; }
+
+  h2 { font-family:Georgia,serif; font-weight:600; font-size:16px; margin:26px 0 10px; color:var(--cream); display:flex; align-items:baseline; gap:10px; }
+  h2 small { font-family:system-ui,sans-serif; font-size:11.5px; color:var(--muted); font-weight:400; }
+  .charts { display:grid; grid-template-columns:1.7fr 1fr 1fr; gap:12px; }
+  @media (max-width:980px){ .charts { grid-template-columns:1fr; } }
+  .panel { background:var(--surface); border:1px solid var(--hairline); border-radius:12px; padding:16px 18px; position:relative; }
+  .panel h3 { font-size:13px; font-weight:600; color:var(--ink-2); margin-bottom:2px; }
+  .panel .h3sub { font-size:11px; color:var(--muted); margin-bottom:10px; }
+  svg text { font-family:system-ui,sans-serif; }
+  .tt { position:absolute; pointer-events:none; background:var(--surface-2); border:1px solid var(--hairline); border-radius:8px; padding:7px 10px; font-size:12px; display:none; z-index:5; box-shadow:0 4px 14px rgba(0,0,0,.4); white-space:nowrap; }
+  .tt b { font-variant-numeric:tabular-nums; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--ink-2); }
+  .legend span { display:flex; align-items:center; gap:6px; }
+
+  .camps { display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:14px; }
+  .camp { background:var(--surface); border:1px solid var(--hairline); border-radius:14px; padding:16px 18px; }
+  .camp .top { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+  .camp b.pa { font-family:Georgia,serif; font-size:16px; color:var(--cream); }
+  .badges { display:flex; gap:6px; align-items:center; }
+  .badge { font-size:10px; letter-spacing:.06em; padding:3px 9px; border-radius:99px; font-weight:700; white-space:nowrap; }
+  .badge.active { background:rgba(208,59,59,.15); color:#e66767; border:1px solid rgba(208,59,59,.4); }
+  .badge.advised { background:rgba(12,163,12,.12); color:#4cc34c; border:1px solid rgba(12,163,12,.35); }
+  .badge.critical { background:rgba(208,59,59,.22); color:#ff8080; border:1px solid rgba(208,59,59,.55); }
+  .badge.high { background:rgba(250,178,25,.16); color:var(--warning); border:1px solid rgba(250,178,25,.45); }
+  .badge.elevated { background:rgba(120,140,200,.14); color:#a9b6e0; border:1px solid rgba(120,140,200,.4); }
+  .camp .headline { font-size:13.5px; color:var(--cream); font-weight:600; margin:2px 0 8px; line-height:1.35; }
+  .camp .meta { font-size:11.5px; color:var(--muted); line-height:1.7; margin-bottom:10px; }
+  .camp .meta b { color:var(--ink-2); font-variant-numeric:tabular-nums; }
+  .metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:6px 0 12px; }
+  .metric { background:var(--surface-2); border-radius:9px; padding:9px 10px; }
+  .metric .mv { font-size:17px; font-weight:600; color:var(--ink); line-height:1.1; font-variant-numeric:tabular-nums; }
+  .metric .ml { font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:3px; }
+  .intel { background:var(--surface-2); border:1px solid var(--hairline); border-left:3px solid var(--blue);
+           border-radius:9px; padding:11px 13px; margin:4px 0 12px; }
+  .intel .ih { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--blue);
+               font-weight:700; margin-bottom:7px; display:flex; align-items:center; gap:6px; }
+  .intel .ir { margin:6px 0; font-size:12px; line-height:1.5; color:var(--ink-2); }
+  .intel .ir b { color:var(--cream); font-weight:600; }
+  .intel.gen { text-align:center; color:var(--muted); font-size:12px; padding:16px; }
+  .spin { display:inline-block; width:11px; height:11px; border:2px solid var(--muted);
+          border-top-color:var(--blue); border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg) } }
+  .camp .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .camp button { background:var(--cream); color:#0f2a1e; border:0; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .camp button.ghost { background:transparent; color:var(--blue); border:1px solid rgba(57,135,229,.5); }
+  .camp button:disabled { opacity:.55; cursor:default; }
+  .camp a { font-size:12px; color:var(--ink-2); }
+  .empty { color:var(--muted); font-size:13px; padding:14px 2px; }
+
+  table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--hairline); border-radius:12px; overflow:hidden; font-size:13px; }
+  th, td { text-align:left; padding:9px 14px; border-bottom:1px solid rgba(255,255,255,.05); }
+  th { background:var(--surface-2); font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600; }
+  td { color:var(--ink-2); font-variant-numeric:tabular-nums; }
+  tr:last-child td { border-bottom:0; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-weight:600; font-size:12px; }
+  .pill .pip { width:8px; height:8px; }
+  .v-red { color:#e66767; } .v-amber { color:var(--warning); } .v-green { color:#4cc34c; }
+  footer { margin-top:26px; font-size:11.5px; color:var(--muted); line-height:1.7; border-top:1px solid var(--hairline); padding-top:14px; }
+</style>
+</head>
+<body>
+<div class="tricolor"></div>
+<header>
+  <div class="emblem">✓</div>
+  <div>
+    <div class="t1">PARAKH <span>परख</span> · Market Surveillance Console</div>
+    <div class="t2">SEBI Securities Market TechSprint · prototype - supervision view of the investor sensor network</div>
+  </div>
+  <div class="live"><span class="dot"></span> LIVE <span class="clock" id="clock"></span></div>
+</header>
+<div class="wrap">
+
+  <div class="tiles" id="tiles"></div>
+
+  <h2>Surveillance <small>rolling 24 hours · updates every 3 s</small></h2>
+  <div class="charts">
+    <div class="panel">
+      <h3>Sightings over time</h3><div class="h3sub">every check is a sighting · all verdicts</div>
+      <div id="area"></div><div class="tt" id="areatt"></div>
+    </div>
+    <div class="panel">
+      <h3>Verdict mix</h3><div class="h3sub">all time</div>
+      <div id="donut"></div><div class="tt" id="donuttt"></div>
+      <div class="legend" id="donutlegend"></div>
+    </div>
+    <div class="panel">
+      <h3>By artifact type</h3><div class="h3sub">what investors are checking</div>
+      <div id="bars"></div><div class="tt" id="barstt"></div>
+    </div>
+  </div>
+
+  <h2>Campaign radar <small>same artifact sighted repeatedly → active campaign</small></h2>
+  <div class="camps" id="camps"><div class="empty">No campaigns yet - they form when the same artifact is checked repeatedly.</div></div>
+
+  <h2>Sightings stream <small>hashes only - no message content is stored (DPDP)</small></h2>
+  <table>
+    <thead><tr><th>Time</th><th>Artifact hash</th><th>Type</th><th>Verdict</th><th>Basis</th><th>Channel</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <footer>
+    Verdict policy: red only from registry debarment, rule conviction, or confirmed-fake match - a model score never convicts.
+    Registry: <span id="regrows">…</span> rows from SEBI's published intermediary lists plus marked seed data.
+    Every datum on this console is an anonymised hash; advisory push reaches senders via WhatsApp within their 24-hour service window.
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const NBSP = ' ';
+const fmtT = ts => new Date(ts*1000).toLocaleTimeString('en-IN',{hour12:false});
+const KIND_LABEL = {pitch_text:'Pitch text', phone:'Phone number', upi:'UPI ID', url:'Link', reg_no:'Reg. number', name_query:'Name lookup', image:'Screenshot', video:'Video', audio:'Voice note'};
+const VC = {red:'var(--critical)', amber:'var(--warning)', green:'var(--good)'};
+const VLABEL = {red:'RED - convicted', amber:'AMBER - caution', green:'GREEN - verified'};
+
+setInterval(()=>{ $('clock').textContent = new Date().toLocaleTimeString('en-IN',{hour12:false}); },1000);
+
+function tiles(d){
+  const t = d.totals, total = (t.red||0)+(t.amber||0)+(t.green||0);
+  const act = d.campaigns.filter(c=>c.status==='active').length;
+  const adv = d.campaigns.filter(c=>c.status==='advised').length;
+  $('tiles').innerHTML = `
+    <div class="tile"><div class="lbl">Total sightings</div><div class="val">${total.toLocaleString('en-IN')}</div><div class="sub">every check feeds supervision</div></div>
+    <div class="tile"><div class="lbl">Scams convicted</div><div class="val">${(t.red||0).toLocaleString('en-IN')}</div><div class="sub"><span class="pip" style="background:var(--critical)"></span>red verdicts, each with citation</div></div>
+    <div class="tile"><div class="lbl">Verified genuine</div><div class="val">${(t.green||0).toLocaleString('en-IN')}</div><div class="sub"><span class="pip" style="background:var(--good)"></span>registry-verified entities</div></div>
+    <div class="tile"><div class="lbl">Active campaigns</div><div class="val">${act}</div><div class="sub"><span class="pip" style="background:var(--warning)"></span>${adv} advised &amp; closed</div></div>
+    <div class="tile"><div class="lbl">Investors reached</div><div class="val">${d.protected}</div><div class="sub">distinct senders on WhatsApp</div></div>`;
+}
+
+function areaChart(d){
+  const W=560,H=190,P={l:34,r:12,t:10,b:22};
+  const now = Date.now()/1000, span = 24*3600;
+  const ts = d.series.map(s=>s.ts);
+  // adaptive: if all activity within 2h, zoom to 2h window of 5-min bins
+  const zoom = ts.length && (now - Math.min(...ts) < 7200);
+  const win = zoom ? 7200 : span, bin = zoom ? 300 : 3600;
+  const n = Math.ceil(win/bin), start = now - win;
+  const bins = Array(n).fill(0);
+  ts.forEach(t=>{ if(t>=start){ const i=Math.min(n-1, Math.floor((t-start)/bin)); bins[i]++; } });
+  const mx = Math.max(4, ...bins);
+  const x = i => P.l + (W-P.l-P.r) * i/(n-1);
+  const y = v => H-P.b - (H-P.t-P.b) * v/mx;
+  let path = bins.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  const area = path + `L${x(n-1)},${y(0)}L${x(0)},${y(0)}Z`;
+  const gridv = [0, Math.round(mx/2), mx];
+  $('area').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
+    ${gridv.map(g=>`<line x1="${P.l}" x2="${W-P.r}" y1="${y(g)}" y2="${y(g)}" stroke="var(--grid)" stroke-width="1"/>
+      <text x="${P.l-6}" y="${y(g)+4}" text-anchor="end" font-size="10" fill="var(--muted)">${g}</text>`).join('')}
+    <path d="${area}" fill="var(--blue)" opacity="0.10"/>
+    <path d="${path}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="${P.l}" x2="${W-P.r}" y1="${H-P.b}" y2="${H-P.b}" stroke="var(--baseline)" stroke-width="1"/>
+    <text x="${P.l}" y="${H-6}" font-size="10" fill="var(--muted)">${zoom?'2 hours ago':'24 hours ago'}</text>
+    <text x="${W-P.r}" y="${H-6}" text-anchor="end" font-size="10" fill="var(--muted)">now</text>
+    <line id="xh" y1="${P.t}" y2="${H-P.b}" stroke="var(--muted)" stroke-width="1" style="display:none"/>
+    <circle id="xdot" r="4" fill="var(--blue)" stroke="var(--surface)" stroke-width="2" style="display:none"/>
+    <rect x="${P.l}" y="${P.t}" width="${W-P.l-P.r}" height="${H-P.t-P.b}" fill="transparent" id="areahit"/>
+  </svg>`;
+  const svg = $('area').querySelector('svg');
+  $('areahit').onmousemove = e => {
+    const r = svg.getBoundingClientRect(), sx = W/r.width;
+    const i = Math.max(0, Math.min(n-1, Math.round(((e.clientX-r.left)*sx - P.l)/((W-P.l-P.r)/(n-1)))));
+    const hx = x(i), hy = y(bins[i]);
+    const xh = svg.getElementById('xh'), dot = svg.getElementById('xdot');
+    xh.setAttribute('x1',hx); xh.setAttribute('x2',hx); xh.style.display='block';
+    dot.setAttribute('cx',hx); dot.setAttribute('cy',hy); dot.style.display='block';
+    const tt = $('areatt');
+    const t0 = new Date((start+i*bin)*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});
+    tt.innerHTML = `${t0} - <b>${bins[i]}</b> sighting${bins[i]===1?'':'s'}`;
+    tt.style.display='block';
+    tt.style.left = Math.min(e.clientX-r.left+14, r.width-150)+'px';
+    tt.style.top = (e.clientY-r.top-10)+'px';
+  };
+  $('areahit').onmouseleave = () => { $('areatt').style.display='none';
+    svg.getElementById('xh').style.display='none'; svg.getElementById('xdot').style.display='none'; };
+}
+
+function donutChart(d){
+  const order = ['red','amber','green'];
+  const t = d.totals, total = order.reduce((a,k)=>a+(t[k]||0),0) || 1;
+  const W=200,H=190,cx=W/2,cy=H/2,R=72,r=46;
+  let a0=-Math.PI/2, segs='';
+  order.forEach(k=>{
+    const v=t[k]||0; if(!v) return;
+    const a1=a0+2*Math.PI*v/total;
+    const large=(a1-a0)>Math.PI?1:0;
+    const p=(a,rr)=>`${cx+rr*Math.cos(a)},${cy+rr*Math.sin(a)}`;
+    segs += `<path d="M${p(a0,R)}A${R},${R} 0 ${large} 1 ${p(a1,R)}L${p(a1,r)}A${r},${r} 0 ${large} 0 ${p(a0,r)}Z"
+      fill="${VC[k]}" stroke="var(--surface)" stroke-width="2" data-k="${k}" data-v="${v}" style="cursor:default"/>`;
+    a0=a1;
+  });
+  $('donut').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:220px;display:block;margin:0 auto">
+    ${segs}
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="26" font-weight="600" fill="var(--ink)">${total}</text>
+    <text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="10.5" fill="var(--muted)">verdicts</text>
+  </svg>`;
+  $('donutlegend').innerHTML = order.map(k=>
+    `<span><span class="pip" style="background:${VC[k]}"></span>${VLABEL[k]} · ${t[k]||0}</span>`).join('');
+  $('donut').querySelectorAll('path').forEach(p=>{
+    p.onmousemove = e => { const tt=$('donuttt'); const k=p.dataset.k;
+      tt.innerHTML = `${VLABEL[k]}: <b>${p.dataset.v}</b> (${Math.round(100*p.dataset.v/total)}%)`;
+      tt.style.display='block';
+      const r=$('donut').getBoundingClientRect();
+      tt.style.left=(e.clientX-r.left+12)+'px'; tt.style.top=(e.clientY-r.top-30)+'px'; };
+    p.onmouseleave = () => $('donuttt').style.display='none';
+  });
+}
+
+function barChart(d){
+  const kinds = d.kinds.slice(0,6);
+  const W=300, rowH=30, P={l:96,r:44,t:4}, H=P.t + kinds.length*rowH + 6;
+  const mx = Math.max(1, ...kinds.map(k=>k.c));
+  const bw = v => (W-P.l-P.r) * v/mx;
+  $('bars').innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%">
+    ${kinds.map((k,i)=>{
+      const y = P.t + i*rowH;
+      return `<text x="${P.l-8}" y="${y+16}" text-anchor="end" font-size="11" fill="var(--ink-2)">${KIND_LABEL[k.kind]||k.kind}</text>
+      <rect x="${P.l}" y="${y+4}" width="${Math.max(2,bw(k.c))}" height="16" rx="4" fill="var(--blue)" data-k="${KIND_LABEL[k.kind]||k.kind}" data-v="${k.c}"/>
+      <text x="${P.l+Math.max(2,bw(k.c))+7}" y="${y+16}" font-size="11.5" fill="var(--ink-2)" font-variant-numeric="tabular-nums">${k.c}</text>`;
+    }).join('')}
+  </svg>` + (kinds.length ? '' : '<div class="empty">No checks yet.</div>');
+  $('bars').querySelectorAll('rect').forEach(rc=>{
+    rc.onmousemove = e => { const tt=$('barstt');
+      tt.innerHTML=`${rc.dataset.k}: <b>${rc.dataset.v}</b> checks`; tt.style.display='block';
+      const r=$('bars').getBoundingClientRect();
+      tt.style.left=(e.clientX-r.left+12)+'px'; tt.style.top=(e.clientY-r.top-30)+'px'; };
+    rc.onmouseleave = () => $('barstt').style.display='none';
+  });
+}
+
+function spark(tss){
+  if(!tss || !tss.length) return '';
+  const W=110,H=26,n=12, now=Date.now()/1000, win=Math.max(3600, now-Math.min(...tss));
+  const bins=Array(n).fill(0);
+  tss.forEach(t=>{ const i=Math.min(n-1,Math.floor((t-(now-win))/(win/n))); if(i>=0)bins[i]++; });
+  const mx=Math.max(1,...bins);
+  const pts=bins.map((v,i)=>`${(i*(W-6)/(n-1)+3).toFixed(1)},${(H-3-(H-8)*v/mx).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+    <polyline points="${pts}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function velocity(tss){
+  if(!tss || tss.length<2) return {rate:'—', span:'—'};
+  const span = (tss[tss.length-1]-tss[0])/3600;
+  const perHr = span>0.02 ? (tss.length/span) : tss.length*60;
+  return {rate: perHr>=1?perHr.toFixed(0):perHr.toFixed(1),
+          span: span>=1?span.toFixed(1)+'h':Math.max(1,Math.round(span*60))+'m'};
+}
+const _intelReq = new Set();
+function camps(d){
+  if(!d.campaigns.length) return;
+  $('camps').innerHTML = d.campaigns.map(c=>{
+    const v = velocity(d.campaign_series[c.hash]);
+    const in_ = c.intel;
+    const tl = in_ ? in_.threat_level : null;
+    const intelHtml = in_ ? `
+      <div class="intel">
+        <div class="ih">🛰️ Parakh AI · threat intelligence</div>
+        <div class="headline" style="margin:0 0 8px">${in_.headline||''}</div>
+        <div class="ir">${in_.summary||''}</div>
+        <div class="ir"><b>Mechanism:</b> ${in_.mechanism||''}</div>
+        <div class="ir"><b>Exposed:</b> ${in_.who_is_exposed||''}</div>
+        <div class="ir"><b>Recommended:</b> ${in_.recommended_action||''}</div>
+      </div>` : `
+      <div class="intel gen" id="intel-${c.id}">
+        <span class="spin"></span> Generating threat brief…
+      </div>`;
+    if(!in_ && !_intelReq.has(c.id)){ _intelReq.add(c.id); genIntel(c.id); }
+    return `
+    <div class="camp">
+      <div class="top"><b class="pa">PA-${String(c.id).padStart(3,'0')}</b>
+        <div class="badges">
+          ${tl?`<span class="badge ${tl}">${tl.toUpperCase()}</span>`:''}
+          <span class="badge ${c.status}">${c.status==='advised'?'ADVISED':'ACTIVE'}</span>
+        </div></div>
+      <div class="metrics">
+        <div class="metric"><div class="mv">${c.count}</div><div class="ml">sightings</div></div>
+        <div class="metric"><div class="mv">${v.rate}/hr</div><div class="ml">velocity</div></div>
+        <div class="metric"><div class="mv">${v.span}</div><div class="ml">active span</div></div>
+      </div>
+      ${intelHtml}
+      <div class="meta">${KIND_LABEL[c.kind]||c.kind||'text'} · first seen ${fmtT(c.first_seen)} · hash <b>${c.hash.slice(0,10)}…</b></div>
+      <div class="row">
+        ${spark(d.campaign_series[c.hash])}
+        ${c.status!=='advised'?`<button onclick="advise(${c.id},this)">Push advisory</button>`:''}
+        <a href="/api/evidence/${c.id}">Evidence ↓</a>
+      </div>
+    </div>`;}).join('');
+}
+async function genIntel(id){
+  try { await fetch('/api/campaign/'+id+'/intel', {method:'POST'}); }
+  catch {}
+  setTimeout(refresh, 500);
+}
+
+function stream(d){
+  $('rows').innerHTML = d.recent.map(s=>`<tr>
+    <td>${fmtT(s.ts)}</td><td>${s.artifact_hash.slice(0,12)}…</td>
+    <td>${KIND_LABEL[s.kind]||s.kind}</td>
+    <td><span class="pill v-${s.verdict}"><span class="pip" style="background:${VC[s.verdict]}"></span>${s.verdict.toUpperCase()}</span></td>
+    <td>${s.ref_id||'-'}</td><td>${s.channel}</td></tr>`).join('')
+    || '<tr><td colspan="6" class="empty">No sightings yet.</td></tr>';
+}
+
+async function refresh(){
+  const d = await (await fetch('/api/stats')).json();
+  tiles(d); areaChart(d); donutChart(d); barChart(d); camps(d); stream(d);
+  $('regrows').textContent = (d.registry_rows||0).toLocaleString('en-IN');
+}
+async function advise(id, btn){
+  btn.disabled = true; btn.textContent = 'Pushing…';
+  const r = await (await fetch('/api/advise/'+id, {method:'POST'})).json();
+  btn.textContent = `Advised ${r.advised} ✓`;
+  setTimeout(refresh, 900);
+}
+refresh(); setInterval(refresh, 3000);
+</script>
+</body>
+</html>

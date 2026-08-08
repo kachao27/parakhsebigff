@@ -1,0 +1,6 @@
+kind,name,reg_no,entity,valid_till,status,phone,source
+ra,Ravi Deshmukh Research,INH000012345,individual,2029-03-31,active,9876543210,seed:synthetic
+ria,Meera Kapoor Investment Advisers,INA000098765,individual,2028-11-30,active,9812345678,seed:synthetic
+broker,Zerodha Broking Limited,INZ000031633,non-individual,,active,,seed:public
+ra,Golden Bull Research,INH000054321,non-individual,,debarred,,seed:synthetic
+ra,Anil Wadhwa,,individual,,debarred,,seed:synthetic
