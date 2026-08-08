@@ -10,7 +10,7 @@ A verdict machine for every investor, and a sensor network for the regulator, bu
 
 - **Web checker:** http://64-227-171-1.sslip.io
 - **Regulator dashboard:** http://64-227-171-1.sslip.io/dashboard
-- **Demo video (3 min):** VIDEO_LINK_HERE
+- **Demo video (3 min):** https://youtu.be/I_DBy5yrUmU
 
 ## Try it in 30 seconds
 
